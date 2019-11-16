@@ -1,0 +1,1 @@
+ssh pi@10.0.10.200 python3 -u - mode_all_off < scripts/set_coup_mode.py
