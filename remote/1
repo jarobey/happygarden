@@ -1,5 +1,0 @@
-Starting state: {"Coup": {"Doors": {}, "Temperatures": {}, "Lights": {"Run Light 2": false, "Coup Light 2": false, "Run Light 1": false, "Coup Light 1": false}, "Plate Status": 0}}
-Setting to:     {"Coup": {"Lights": {"Run Light 1": false, "Run Light 2": false, "Coup Light 1": false, "Coup Light 2": false}}}
-Final state:    {"Coup": {"Doors": {}, "Temperatures": {}, "Lights": {"Run Light 2": false, "Coup Light 2": false, "Run Light 1": false, "Coup Light 1": false}, "Plate Status": 0}}
-Current time is time.struct_time(tm_year=2019, tm_mon=11, tm_mday=15, tm_hour=22, tm_min=52, tm_sec=24, tm_wday=4, tm_yday=319, tm_isdst=0)
-mode_all_off
