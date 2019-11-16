@@ -1,0 +1,1 @@
+ssh pi@10.0.10.200 python3 -u - mode_pre_bed < scripts/set_coup_mode.py
