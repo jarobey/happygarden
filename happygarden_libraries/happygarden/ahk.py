@@ -6,36 +6,31 @@ import logging, signal
 from .coup import RemoteCoup
 
 class RemoteGardenLight(Accessory):
-    """Remoting RaspberryPi from AHK Hub on server"""
-
     category = CATEGORY_LIGHTBULB
-    name = None
     coup = None
 
     def __init__(self, *args, name, coup, **kwargs):
         super().__init__(*args, display_name=name, **kwargs)
 
+        self.coup = coup
         light_service = self.add_preload_service('Lightbulb')
-        self.char_on = light_service.configure_char('On', setter_callback=self.set_runlight)
-        self.name = name
+        self.char_on = light_service.configure_char('On', setter_callback=self.set_runlight, getter_callback=self.get_runlight, value=self.get_runlight())
+        print('Added Device: {0}'.format(self))
 
     def set_runlight(self, value):
-        self.coup['Coup']['Lights'][self.name] = value
-        self.coup.set_desired_state(self.coup.status)
+        self.coup.status['Coup']['Lights'][self.display_name] = (value == 1)
+        self.coup.apply_status()
 
-"""An example of how to setup and start an Accessory.
-This is:
-1. Create the Accessory object you want.
-2. Add it to an AccessoryDriver, which will advertise it on the local network,
-    setup a server to answer client queries, etc.
-"""
+    def get_runlight(self):
+        return 1 if self.coup.status['Coup']['Lights'][self.display_name] else 0
+
 class GardenHub():
-    hub_name = "OfficeIMac"
+    hub_name = None
     driver = None
     bridge = None
     coup = None
     
-    def __init__(self, hub_name, user, device):
+    def __init__(self, hub_name, user, device, listen_address=None):
         logging.basicConfig(level=logging.INFO, format="[%(module)s] %(message)s")
 
         # Initialize my coup
@@ -43,7 +38,8 @@ class GardenHub():
         coup = RemoteCoup(user, device)
         
         # Start the accessory on port 51826
-        self.driver = AccessoryDriver(port=51826)
+        if listen_address: self.driver = AccessoryDriver(port=51826, address=listen_address)
+        else: self.driver = AccessoryDriver(port=51826)
 
         self.bridge = Bridge(self.driver, self.hub_name)
 

@@ -32,9 +32,10 @@ class RemoteCoup():
         self.session.expect(self.PROMPT)
         self.refresh_status()
     
-    def set_desired_state(self, state):
-        self.session.sendline(self.SET_STATE_CMD.format(state))
+    def apply_status(self):
+        self.session.sendline(self.SET_STATE_CMD.format(json.dumps(self.status)))
         self.session.expect(self.PROMPT)
+        # print(self.session.before)
         self.refresh_status()
        
 # my_coup = RemoteCoup('pi','10.0.10.200')
