@@ -10,12 +10,7 @@ class RemoteCoup():
     SET_STATE_CMD = """c.set_state('{0}')"""
     PROMPT = '>>> '
 
-    status = None
-    user = None
-    device = None
-    session = None
-
-    def __init__(self, user, pi_device, **kwargs):
+    def __init__(self, user, pi_device, change_listener=None, **kwargs):
         self.user = user
         self.device = pi_device
         self.session = pexpect.spawn("ssh {0}@{1} -t python3".format(self.user, self.device))
