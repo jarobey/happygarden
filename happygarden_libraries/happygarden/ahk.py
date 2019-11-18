@@ -5,6 +5,8 @@ from pyhap.const import CATEGORY_LIGHTBULB
 import logging, signal
 from .coup import RemoteCoup
 
+logger = logging.getLogger(__name__)
+
 class RemoteGardenLight(Accessory):
     category = CATEGORY_LIGHTBULB
     coup = None
@@ -15,14 +17,17 @@ class RemoteGardenLight(Accessory):
         self.coup = coup
         light_service = self.add_preload_service('Lightbulb')
         self.char_on = light_service.configure_char('On', setter_callback=self.set_runlight, getter_callback=self.get_runlight, value=self.get_runlight())
-        print('Added Device: {0}'.format(self))
+        logger.info('Added Device: %s',self)
 
     def set_runlight(self, value):
-        self.coup.status['Coup']['Lights'][self.display_name] = (value == 1)
+        # LightBulb-On is a bool characteristic.  AHK may send a 1/0, but it will show as True/False in the characteristic On
+        value = bool(value)
+        self.coup.status['Coup']['Lights'][self.display_name] = value
         self.coup.apply_status()
+        logger.debug("Set RemoteGardenLight %s to %s", self.display_name, value)
 
     def get_runlight(self):
-        return 1 if self.coup.status['Coup']['Lights'][self.display_name] else 0
+        return self.coup.status['Coup']['Lights'][self.display_name]
 
 class GardenHub():
     hub_name = None
@@ -45,7 +50,7 @@ class GardenHub():
 
         # Setup run and coup lights
         for light in coup.status['Coup']['Lights']:
-            print(light)
+            logger.info("Adding %s", light)
             runlight = RemoteGardenLight(self.driver, name=light, coup=coup)
             self.bridge.add_accessory(runlight)
         

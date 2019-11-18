@@ -1,6 +1,8 @@
 import piplates.RELAYplate as RELAY
-import json
+import json, logging
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 class LIGHT_MODE(Enum):
     ALL_ON = """{"Coup": {"Lights": {"Run Light 1": true , "Run Light 2": true , "Coup Light 1": true, "Coup Light 2": true}}}"""

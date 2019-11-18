@@ -1,6 +1,9 @@
-import os, subprocess, json, time, pexpect
+import os, subprocess, json, time, pexpect, logging
+
+logger = logging.getLogger(__name__)
 
 class RemoteCoup():
+
     SETUP_CMD = """from happygarden.mycoup import *; c = Coup()"""
     STATUS_CMD = """c.get_status()"""
     SET_LIGHT_MODE_CMD = """c.set_light_mode({0})"""
@@ -35,7 +38,7 @@ class RemoteCoup():
     def apply_status(self):
         self.session.sendline(self.SET_STATE_CMD.format(json.dumps(self.status)))
         self.session.expect(self.PROMPT)
-        # print(self.session.before)
+        logger.debug("Command-line return text: %s", self.session.before)
         self.refresh_status()
        
 # my_coup = RemoteCoup('pi','10.0.10.200')
