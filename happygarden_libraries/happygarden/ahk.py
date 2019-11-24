@@ -4,12 +4,15 @@ import pyhap.loader as loader
 from pyhap.const import CATEGORY_LIGHTBULB
 import logging, signal
 from .coup import RemoteCoup
+import time
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__package__ + __name__)
 
 class RemoteGardenLight(Accessory):
+    TIME_OUT = 60 # validate every minute
     category = CATEGORY_LIGHTBULB
     coup = None
+    check_time = time.time()
 
     def __init__(self, *args, name, coup, **kwargs):
         super().__init__(*args, display_name=name, **kwargs)
@@ -18,6 +21,7 @@ class RemoteGardenLight(Accessory):
         light_service = self.add_preload_service('Lightbulb')
         self.char_on = light_service.configure_char('On', setter_callback=self.set_runlight, getter_callback=self.get_runlight, value=self.get_runlight())
         logger.info('Added Device: %s',self)
+        self.check_time = time.time()
 
     def set_runlight(self, value):
         # LightBulb-On is a bool characteristic.  AHK may send a 1/0, but it will show as True/False in the characteristic On
@@ -27,6 +31,10 @@ class RemoteGardenLight(Accessory):
         logger.debug("Set RemoteGardenLight %s to %s", self.display_name, value)
 
     def get_runlight(self):
+        now = time.time()
+        if now - self.check_time > self.TIME_OUT:
+            self.coup.refresh_status()
+            self.check_time = now
         return self.coup.status['Coup']['Lights'][self.display_name]
 
 class GardenHub():
@@ -63,3 +71,4 @@ class GardenHub():
 
     def start(self):
         self.driver.start()
+        print("Completed {0} start".format(__name__))
