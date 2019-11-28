@@ -1,0 +1,1 @@
+pip3 install dist/happygarden-0.6.tar.gz
