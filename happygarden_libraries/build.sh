@@ -1,2 +1,1 @@
-python3 setup.py bdist_egg
-scp dist/happygarden*.egg pi@10.0.10.200:.
+python3 setup.py sdist bdist_wheel bdist_egg
