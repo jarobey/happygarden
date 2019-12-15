@@ -5,6 +5,7 @@ from pyhap.const import CATEGORY_LIGHTBULB
 import logging, signal
 from .coup import RemoteCoup
 import time
+from datetime import datetime
 
 logger = logging.getLogger(__package__ + __name__)
 
@@ -12,7 +13,6 @@ class RemoteGardenLight(Accessory):
     TIME_OUT = 60 # validate every minute
     category = CATEGORY_LIGHTBULB
     coup = None
-    check_time = time.time()
 
     def __init__(self, *args, name, coup, **kwargs):
         super().__init__(*args, display_name=name, **kwargs)
@@ -26,16 +26,15 @@ class RemoteGardenLight(Accessory):
     def set_runlight(self, value):
         # LightBulb-On is a bool characteristic.  AHK may send a 1/0, but it will show as True/False in the characteristic On
         value = bool(value)
-        self.coup.status['Coup']['Lights'][self.display_name] = value
-        self.coup.apply_status()
+        status = self.coup.get_status()
+        status['Coup']['Lights'][self.display_name] = value
+        self.coup.apply_status(status)
         logger.debug("Set RemoteGardenLight %s to %s", self.display_name, value)
 
     def get_runlight(self):
-        now = time.time()
-        if now - self.check_time > self.TIME_OUT:
-            self.coup.refresh_status()
-            self.check_time = now
-        return self.coup.status['Coup']['Lights'][self.display_name]
+        status = self.coup.get_status()
+        if status is None: return None
+        return status['Coup']['Lights'][self.display_name]
 
 class GardenHub():
     hub_name = None
@@ -57,10 +56,17 @@ class GardenHub():
         self.bridge = Bridge(self.driver, self.hub_name)
 
         # Setup run and coup lights
-        for light in coup.status['Coup']['Lights']:
-            logger.info("Adding %s", light)
-            runlight = RemoteGardenLight(self.driver, name=light, coup=coup)
-            self.bridge.add_accessory(runlight)
+        while True:
+            status = coup.get_status()
+            if (status is None) or ('Coup' not in status) or ('Lights' not in status['Coup']):
+                logger.error("Status has not been initialized or lights missing: Status = {0} at {1}".format(status, datetime.now()))
+            else:
+                for light in status['Coup']['Lights']:
+                    logger.info("Adding %s", light)
+                    runlight = RemoteGardenLight(self.driver, name=light, coup=coup)
+                    self.bridge.add_accessory(runlight)
+                break
+            time.sleep(5)
         
         # Change `get_accessory` to `get_bridge` if you want to run a Bridge.
         self.driver.add_accessory(accessory=self.bridge)
