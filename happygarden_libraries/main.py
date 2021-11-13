@@ -1,1 +1,1 @@
-from happygarden.ahk import GardenHub;GardenHub('IMACBridge','pi','10.0.10.200').start()
+from happygarden.ahk import GardenHub;GardenHub('littlebot','pi','10.0.10.200').start()

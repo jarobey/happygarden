@@ -1,6 +1,12 @@
-import re, pexpect, logging, http.client, csv
+from . import home_dir, cache_dir, save_object, load_object
+
+import re, pexpect, logging, http.client, csv, datetime, os, json
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+OUI_CACHE = 'oui.pickle'
+DEVICE_CACHE = 'devices.pickle'
 
 class network_references:
     SERVER_SOURCE = 'standards-oui.ieee.org'
@@ -18,7 +24,20 @@ class network_references:
     ouis = None
 
     def __init__(self):
-        self.load_ouis()
+        logger.info("Initializing network references")
+
+        logger.info("Getting OUI mappings")
+        oui_cache = cache_dir / OUI_CACHE
+        if oui_cache.exists():
+            logger.info('{0} exists so loading OUI map from cache'.format(oui_cache))
+            self.ouis = load_object(oui_cache)
+            logger.info('OUI map loaded from cache')
+        else:
+            logger.info('{0} missing so loading OUI map from {1}'.format(oui_cache, self.SERVER_SOURCE))
+            self.load_ouis()
+            logger.info('OUI map loaded from {0}, caching to {1}'.format(self.SERVER_SOURCE, oui_cache))
+            save_object(self.ouis, oui_cache)
+            logger.info('OUI map cached to {0}'.format(oui_cache))
 
     def _load_csv(self, doc_name):
         conn = http.client.HTTPConnection(self.SERVER_SOURCE)
@@ -35,9 +54,11 @@ class network_references:
         return entries
 
     def load_ouis(self):
+        logger.info('Starting OUI load')
         self.ouis = {}
         for entry in self._load_csv('oui'):
             self.ouis[entry['Assignment']] = entry
+        logger.info('Finished OUI load')
 
 class arp_device:
     # gateway.home (10.0.10.1) at 18:9c:27:88:5a:10 on en0 ifscope [ethernet]
@@ -65,28 +86,44 @@ class arp_device:
             self.name, self.ip, self.mac, self.interface, self.ifscope, self.permanent, self.net_type, self.manufacturer)
 
 class finder:
-    ARP_NAMES = "arp -a"
+    ARP_NAMES = 'arp -a'
+    ARP_IPS = 'arp -an'
 
-    ip_to_device = {}
-    names_to_device = {}
-    devices = []
     net_ref = network_references()
+    manufacturer_map = {}
+
+    def __init__(self):
+        device_cache = cache_dir / DEVICE_CACHE
+        if device_cache.exists():
+            logger.info('Loading devices from {}'.format(device_cache))
+            self.manufacturer_map = load_object(device_cache)
+        else:
+            self.reload_arp_report()
+            logger.info('Caching devices to {}'.format(device_cache))
+            save_object(self.manufacturer_map, device_cache)
 
     def reload_arp_report(self):
+        logger.info('Loading ARP report using "{0}"'.format(self.ARP_NAMES))
         lines = pexpect.run(self.ARP_NAMES).decode('utf-8').split('\r\n')
-        self.ip_to_device.clear()
-        self.names_to_device.clear()
-        self.devices.clear()
+        logger.info('"{0}" completed'.format(self.ARP_NAMES))
+        devices = []
         for line in lines:
+            logger.debug('Processing line {0}'.format('line'))
             if not len(line): continue
-            logger.debug('loading device {} from {}'.format(len(self.devices), line))
+            logger.debug('loading device {} from {}'.format(len(devices), line))
             device = arp_device(line, self.net_ref)
-            self.devices.append(device)
-            self.ip_to_device[device.ip] = device
-            if device.name != '?':
-                self.names_to_device[device.name] = device
-        return len(self.devices)
+            devices.append(device)
+            logger.debug('Processed as {0}'.format(device))
+        self.manufacturer_map = {}
+        for device in devices:
+            manufacturer = device.manufacturer
+            if manufacturer not in self.manufacturer_map:
+                logger.debug('New manufacturer entry of {0}'.format(manufacturer))
+                self.manufacturer_map[manufacturer] = []
+            logger.debug('Adding {0} to list {1}'.format(device, manufacturer))
+            self.manufacturer_map[manufacturer].append(device)
+        logger.debug('Loaded device map as {}'.format(self.manufacturer_map))
+        return len(devices)
 
 def mac_to_hex(mac_string):
-    print(mac_string.split(':'))
     return '{0:0>2}{1:0>2}{2:0>2}{3:0>2}{4:0>2}{5:0>2}'.format(*mac_string.split(':')).upper()
